@@ -1,0 +1,18 @@
+# 抓词工具的输出（个人数据，不入库）
+wordpack-*.json
+
+# 本机测试脚本（依赖写死本机路径）
+_*.js
+_*.png
+
+# 编辑器 / 系统杂物
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# 依赖目录
+node_modules/
+package-lock.json

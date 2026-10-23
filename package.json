@@ -1,0 +1,1 @@
+{"name":"lexforge","version":"1.0.0","private":true,"description":"LexForge vocabulary trainer","dependencies":{"playwright-core":"^1.64.1"}}

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexForge · reading-driven vocabulary trainer</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/i18n.js"></script>
+<meta name="color-scheme" content="light dark"><style id="__dm_no_drag_style__">* { -webkit-user-drag: none !important; }</style><style id="__dm_bindable_badge_style__">[data-sp-bindable="database"]{outline:1px dashed #0088ff;outline-offset:2px;border-radius:4px;}[data-sp-bindable="database"] *{pointer-events:none !important;transition:none !important;animation:none !important;}[data-sp-bindable="database"]{transition:none !important;animation:none !important;}</style></head>
+<body style="">
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">LF</div>
+    <div class="brand-text">
+      <h1 data-i18n="app.name">LexForge</h1>
+      <p data-i18n="app.tagline">Reading-driven vocabulary trainer</p>
+    </div>
+  </div>
+  <div class="stat-strip" id="statStrip"><div class="stat"><b>0</b><span>words</span></div><div class="stat"><b>0</b><span>due</span></div><div class="stat"><b>0</b><span>new / vague</span></div><div class="stat"><b>0</b><span>solid</span></div><div class="stat"><b>0</b><span>practised</span></div></div>
+  <button class="icon-btn gear" id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
+</header>
+
+<div class="warnbar" id="warnBar" hidden><b>This browser is blocking local storage, so anything you add will vanish on reload.</b> Try opening the file directly in Chrome or Edge, and export a JSON backup from Data &amp; backup from time to time.</div>
+
+<nav class="tabs" id="tabBar">
+  <button class="tab active" data-tab="words" data-i18n="tab.words">Word bank</button>
+  <button class="tab" data-tab="forge" data-i18n="tab.forge">Build a passage</button>
+  <button class="tab" data-tab="log" data-i18n="tab.log">Reading log</button>
+  <button class="tab" data-tab="data" data-i18n="tab.data">Data &amp; backup</button>
+  <button class="tab" data-tab="about" data-i18n="tab.about">About</button>
+</nav>
+
+<main class="wrap">
+
+  <!-- ================= Word bank ================= -->
+  <section class="panel active" id="panel-words">
+    <div class="toolbar">
+      <input type="search" id="searchInput" class="input search" data-i18n="search.ph" placeholder="Search word, sense, collocation…">
+      <select id="filterMastery" class="input">
+        <option value="" data-i18n="filter.anyMastery">Any mastery</option>
+        <option value="0" data-i18n="m.0">New</option>
+        <option value="1" data-i18n="m.1">Vague</option>
+        <option value="2" data-i18n="m.2">Recognised</option>
+        <option value="3" data-i18n="m.3">Solid</option>
+        <option value="4" data-i18n="m.4">Mastered</option>
+      </select>
+      <select id="filterWeak" class="input"><option value="">Any weakness</option><option value="polysemy">Multiple meanings</option><option value="phrase">Collocations</option><option value="derivation">Word family</option><option value="grammar">Grammar patterns</option><option value="register">Register / formality</option><option value="speed">Recognition speed</option><option value="active">Passive to active</option><option value="discourse">Discourse function</option></select>
+      <label class="check"><input type="checkbox" id="filterDue"> <span data-i18n="filter.dueOnly">Due only</span></label>
+      <select id="sortBy" class="input">
+        <option value="priority" data-i18n="sort.priority">Priority</option>
+        <option value="due" data-i18n="sort.due">Due date</option>
+        <option value="mastery" data-i18n="sort.mastery">Mastery (low first)</option>
+      <option value="added" data-i18n="sort.added">Recently added</option>
+        <option value="alpha" data-i18n="sort.alpha">A–Z</option>
+      </select>
+      <div class="tb-break"></div>
+      <select id="bankSelect" class="input bank-select" title="Which word bank you are looking at"></select>
+      <button class="btn ghost" id="btnBankNew" data-i18n="btn.newBank">New bank</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" id="btnSyncLib" data-i18n="btn.syncLib" data-i18n-title="btn.syncLibTip" title="Sync bank words from the library">Sync from library</button>
+      <button class="btn ghost" id="btnBatchEdit" data-i18n="btn.batchEdit">Batch edit</button>
+      <button class="btn ghost" id="btnLibrary" data-i18n="btn.library">Library</button>
+      <button class="btn primary" id="btnAdd" data-i18n="btn.addWord">Add word</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="word-table">
+        <thead>
+          <tr>
+            <th class="c-word" data-i18n="th.word">Word</th>
+            <th class="c-pos" data-i18n="th.pos">POS</th>
+            <th class="c-gloss" data-i18n="th.gloss">Senses / collocations</th>
+            <th class="c-mast" data-i18n="th.mastery">Mastery</th>
+            <th class="c-weak" data-i18n="th.weak">Weaknesses</th>
+            <th class="c-due" data-i18n="th.due">Due</th>
+            <th class="c-op"></th>
+          </tr>
+        </thead>
+        <tbody id="wordRows"></tbody>
+      </table>
+    </div>
+    <div class="empty-hint" id="wordsEmpty" hidden="" data-i18n="words.empty">No words in this bank yet — use <b>Add word</b>, or open <b>Library</b> to pick words you already have.</div>
+  </section>
+
+  <!-- ================= Build a passage ================= -->
+  <section class="panel" id="panel-forge">
+    <div class="forge-grid">
+
+      <div class="card wide">
+        <h3 class="card-title" data-i18n="forge.params">1 · Passage parameters</h3>
+
+        <div class="field-row">
+          <label class="field">
+            <span data-i18n="forge.level">Target level</span>
+            <select id="fLevel" class="input"><option value="Gaokao (China national college entrance exam) — C/D reading passages">Gaokao (China) — C/D passages</option><option value="Zhongkao (China junior-high entrance exam)">Zhongkao (China junior-high)</option><option value="CET-4 (China college English band 4)">CET-4 (China)</option><option value="CET-6 (China college English band 6)">CET-6 (China)</option><option value="Kaoyan (China postgraduate English, reading section)">Kaoyan (China postgraduate)</option><option value="IELTS Academic reading (band 6.0–7.0)">IELTS Academic</option><option value="TOEFL iBT reading">TOEFL iBT</option><option value="CEFR A2 — elementary">CEFR A2 — elementary</option><option value="CEFR B1 — intermediate">CEFR B1 — intermediate</option><option value="CEFR B2 — upper intermediate">CEFR B2 — upper intermediate</option><option value="CEFR C1 — advanced">CEFR C1 — advanced</option><option value="CEFR C2 — proficient">CEFR C2 — proficient</option><option value="">General educated reading, no exam constraint</option><option value="__custom">Custom… (describe below)</option></select>
+          </label>
+          <label class="field" id="fLevelCustomWrap" hidden="">
+            <span data-i18n="forge.levelCustom">Custom level</span>
+            <input id="fLevelCustom" class="input" placeholder="e.g. first-year university, about 3500 word families">
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field narrow">
+            <span data-i18n="forge.length">Length (words)</span>
+            <input type="number" id="fLength" class="input" min="80" max="2000" step="10" value="360">
+          </label>
+          <div class="field">
+            <span data-i18n="forge.presets">Presets</span>
+            <div class="chip-grid" id="fLenPresets"><span class="chip" data-len="120">120</span><span class="chip" data-len="200">200</span><span class="chip" data-len="280">280</span><span class="chip" data-len="360">360</span><span class="chip" data-len="500">500</span><span class="chip" data-len="700">700</span><span class="chip" data-len="1000">1000</span><span class="chip" data-len="1500">1500</span></div>
+          </div>
+          <label class="field narrow">
+            <span data-i18n="forge.paras">Paragraphs</span>
+            <input type="number" id="fParas" class="input" min="2" max="10" step="1" value="4">
+            <label class="check inline"><input type="checkbox" id="fParasAuto" checked=""> <span data-i18n="forge.auto">Adjust with length</span></label>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field">
+            <span data-i18n="forge.genre">Genre</span>
+            <select id="fGenre" class="input"><option value="Expository — explaining a phenomenon or concept">Expository</option><option value="Argumentative — a claim with reasons and a counter-argument">Argumentative</option><option value="News report — an event with several voices">News report</option><option value="Science explainer — how something works">Science explainer</option><option value="Research summary — a study and what it means">Research summary</option><option value="Opinion column / op-ed">Opinion column / op-ed</option><option value="Book or film review">Book or film review</option><option value="Biography / personal profile">Biography / profile</option><option value="Narrative — a story with a turn">Narrative</option><option value="Historical account">Historical account</option><option value="Culture and travel essay">Culture &amp; travel</option><option value="Business / market report">Business / market</option><option value="Product or service description">Product description</option><option value="How-to / practical guide">How-to guide</option><option value="Interview (Q&amp;A form)">Interview (Q&amp;A)</option><option value="Letter or email to an editor">Letter to an editor</option><option value="Speech / talk transcript">Speech / talk</option><option value="Fable or allegory">Fable / allegory</option><option value="Comparison — two things weighed against each other">Comparison</option></select>
+          </label>
+          <label class="field">
+            <span data-i18n="forge.topic">Topic</span>
+            <select id="fTopic" class="input"><option value="Any topic that best fits the target words">Any (writer's choice)</option><option value="Technology and artificial intelligence">Technology &amp; AI</option><option value="Environment and sustainability">Environment &amp; sustainability</option><option value="Psychology and behavioural science">Psychology &amp; behaviour</option><option value="Education and learning science">Education &amp; learning</option><option value="Culture and cross-cultural exchange">Culture &amp; exchange</option><option value="Health, medicine and lifestyle">Health &amp; lifestyle</option><option value="Society, cities and demography">Society &amp; cities</option><option value="History, archaeology and the humanities">History &amp; humanities</option><option value="Business, economy and consumption">Business &amp; economy</option><option value="Art, literature and media">Art, literature &amp; media</option><option value="Sports and competition">Sports</option><option value="Food, agriculture and diet">Food &amp; agriculture</option><option value="Law, ethics and public policy">Law, ethics &amp; policy</option><option value="Space, physics and natural science">Space &amp; natural science</option><option value="Work, careers and organisations">Work &amp; careers</option><option value="__custom">Custom… (type below)</option></select>
+          </label>
+        </div>
+        <label class="field" id="fTopicCustomWrap" hidden="">
+          <span data-i18n="forge.topicCustom">Custom topic</span>
+          <input id="fTopicCustom" class="input" placeholder="e.g. the history of tea packaging in 18th-century Britain">
+        </label>
+
+        <div class="field-row">
+          <label class="field narrow">
+            <span data-i18n="forge.questions">Questions</span>
+            <input type="number" id="fQuestions" class="input" min="0" max="12" step="1" value="4">
+            <label class="check inline"><input type="checkbox" id="fQuestionsAuto" checked=""> <span data-i18n="forge.auto">Adjust with length</span></label>
+          </label>
+          <div class="field">
+            <div class="q-head">
+              <span data-i18n="forge.qTypes" class="field-label">Question types</span>
+              <label class="check inline"><input type="checkbox" id="fQStrict"> <span data-i18n="forge.qStrict">Only these types</span></label>
+              <span class="muted q-count" id="fQTypesCount"></span>
+            </div>
+            <div class="chip-grid" id="fQTypes" style="opacity: 1;"></div>
+            <p class="hint" data-i18n="forge.qHint">Leave empty for a sensible mix. You can pick at most one type per question.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <span data-i18n="forge.weakFocus" class="field-label">Weakness types to focus on this round</span>
+          <div class="chip-grid" id="fWeakFocus"><span class="chip t-polysemy" data-w="polysemy" title="Multiple meanings — You know one sense, but freeze when it shows up in a different context">Multiple meanings</span><span class="chip t-phrase" data-w="phrase" title="Collocations — You know the word alone, but not how it combines with others">Collocations</span><span class="chip t-derivation" data-w="derivation" title="Word family — Adding a prefix or changing the part of speech makes it unrecognisable">Word family</span><span class="chip t-grammar" data-w="grammar" title="Grammar patterns — Sentence patterns, transitivity, verb complements and similar usage">Grammar patterns</span><span class="chip t-register" data-w="register" title="Register / formality — Unsure whether a word is formal, informal, spoken or academic">Register / formality</span><span class="chip t-speed" data-w="speed" title="Recognition speed — You get there, but slowly enough to break your reading flow">Recognition speed</span><span class="chip t-active" data-w="active" title="Passive to active — You recognise it while reading but cannot produce it yourself">Passive to active</span><span class="chip t-discourse" data-w="discourse" title="Discourse function — Logical connectors and attitude markers whose function you are unsure of">Discourse function</span></div>
+          <p class="hint" data-i18n="forge.weakHint">Unchecked = no filter; the algorithm scores everything. Checked types get priority.</p>
+        </div>
+
+        <div class="field-row">
+          <label class="field">
+            <span data-i18n="forge.count">Target words</span> <b id="fCountVal">9</b>
+            <input type="range" id="fCount" min="3" max="30" step="1" value="9" class="range">
+            <label class="check inline"><input type="checkbox" id="fCountAuto" checked=""> <span data-i18n="forge.auto">Adjust with length</span></label>
+          </label>
+          <label class="field">
+            <span data-i18n="forge.diff">Difficulty lean</span> <b id="fDiffVal">Balanced</b>
+            <input type="range" id="fDiff" min="0" max="100" value="50" class="range">
+            <span class="range-ends" style="gap: 8px;"><i data-i18n="forge.range.known">known</i><i data-i18n="forge.range.new">new</i></span>
+          </label>
+          <label class="field">
+            <span data-i18n="forge.coverage">Minimum coverage</span>
+            <select id="fCoverage" class="input">
+              <option value="60" selected="" data-i18n="forge.cover.60">60% — naturalness first</option>
+              <option value="75" data-i18n="forge.cover.75">75%</option>
+              <option value="90" data-i18n="forge.cover.90">90%</option>
+              <option value="100" data-i18n="forge.cover.100">100% (may read forced)</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint" data-i18n="forge.autoHint">Auto scales three things with the passage length: target words ≈ length/40, paragraphs ≈ length/90, questions ≈ length/100. Edit any of the three by hand and its auto switch turns itself off — the others keep following.</p>
+
+        <div class="field">
+          <span data-i18n="forge.outputs" class="field-label">Extra output sections</span>
+          <div class="chip-grid" id="fOutputs"><span class="chip on" data-o="glossary">Glossary</span><span class="chip" data-o="translation">Full translation</span><span class="chip on" data-o="answerKey">Answer key</span></div>
+        </div>
+        <label class="field" id="fL1Wrap" hidden="">
+          <span data-i18n="forge.l1">Translation language</span>
+          <input id="fL1" class="input" value="Chinese">
+        </label>
+
+        <div class="field">
+          <span data-i18n="forge.extra" class="field-label">Extra instructions (optional)</span>
+          <textarea id="fExtra" class="input" rows="2" placeholder="e.g. avoid long parenthetical clauses; end with an open question; keep sentences under 25 words…"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title" data-i18n="forge.picks">2 · Pick the words to train</h3>
+        <div class="forge-actions">
+          <button class="btn primary" id="btnPick" data-i18n="btn.pick">Pick words</button>
+          <button class="btn ghost" id="btnPickReroll" data-i18n="btn.reroll">Reroll</button>
+          <button class="btn ghost" id="btnClearPick" data-i18n="btn.clear">Clear</button>
+          <button class="btn ghost" id="btnAddPick" data-i18n="btn.addManual">Add manually</button>
+        </div>
+        <div id="pickList" class="pick-list"><p class="muted">Hit <b>Pick words</b>. The algorithm weighs due date, mastery, weakness tags and recent use, then applies diversity limits.</p></div>
+      </div>
+
+      <div class="card wide">
+        <h3 class="card-title" data-i18n="forge.prompt">3 · Prompt or reading task</h3>
+        <div class="forge-actions">
+          <button class="btn primary" id="btnGen" data-i18n="btn.generate">Generate prompt</button>
+          <button class="btn" id="btnCopy" data-copy-target="promptOut" title="Copy the prompt">
+            <span class="cl" data-i18n="btn.copy">Copy</span>
+          </button>
+          <button class="btn" id="btnSaveTask" data-i18n="btn.saveTask">Save as reading task</button>
+          <span class="muted" id="genInfo"></span>
+        </div>
+        <textarea id="promptOut" class="input code" rows="20" placeholder="Pick words, then hit Generate prompt…"></textarea>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= Reading log ================= -->
+  <section class="panel" id="panel-log">
+    <div class="toolbar">
+      <h3 class="inline-title" data-i18n="log.tasks">Reading tasks</h3>
+      <div class="spacer"></div>
+      <label class="check"><input type="checkbox" id="logShowDone"> <span data-i18n="log.showDone">Show completed</span></label>
+    </div>
+    <div id="logList" class="log-list"></div>
+    <div class="empty-hint" id="logEmpty" hidden="" data-i18n="log.empty">No reading tasks yet. Generate a prompt and save it, then come back here to score the words.</div>
+  </section>
+
+  <!-- ================= Data ================= -->
+  <section class="panel" id="panel-data">
+    <div class="data-grid">
+      <div class="card">
+        <h3 class="card-title" data-i18n="data.masteryDist">Mastery distribution</h3>
+        <div id="distMastery" class="dist"></div>
+      </div>
+      <div class="card">
+        <h3 class="card-title" data-i18n="data.weakDist">Weakness distribution</h3>
+        <div id="distWeak" class="dist"></div>
+      </div>
+      <div class="card wide">
+        <h3 class="card-title" data-i18n="data.source">Where the word bank comes from</h3>
+        <p class="hint" id="sourceHint"></p>
+      </div>
+      <div class="card wide">
+        <h3 class="card-title" data-i18n="data.banks">Word banks</h3>
+        <p class="hint" data-i18n="data.banksHint">Rename a bank, or delete one you no longer need — its words move into the first remaining bank. At least one bank always stays.</p>
+        <div id="bankList" class="bank-list"></div>
+      </div>
+      <div class="card wide">
+        <h3 class="card-title" data-i18n="data.backup">Backup and migration</h3>
+        <p class="hint" data-i18n="data.backupHint">Data lives in your browser (localStorage). <b>Clearing site data wipes it</b>, so export a backup now and then.</p>
+        <div class="forge-actions">
+          <button class="btn" id="btnExportJSON" data-i18n="btn.exportJSON">Export JSON (full backup)</button>
+          <button class="btn" id="btnExportCSV" data-i18n="btn.exportCSV">Export CSV</button>
+          <button class="btn" id="btnImportJSON" data-i18n="btn.importJSON">Import JSON / CSV</button>
+          <button class="btn danger" id="btnReset" data-i18n="btn.erase">Erase everything</button>
+        </div>
+        <input type="file" id="fileInput" accept=".json,.csv,.txt" hidden="">
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= About ================= -->
+  <section class="panel" id="panel-about">
+    <div class="card wide about-card">
+      <h3 class="card-title" data-i18n="about.title">About LexForge</h3>
+      <p class="hint" data-i18n="about.intro">LexForge is a local, offline vocabulary trainer.</p>
+      <p class="about-label" data-i18n="about.algoTitle">How the word-picker works</p>
+      <p class="hint" data-i18n="about.algo">Every word gets a recommendation score…</p>
+      <p class="about-label" data-i18n="about.voiceTitle">Pronunciation &amp; offline</p>
+      <p class="hint" data-i18n="about.voice">The app works offline, so it never downloads clips — every word is read with your system voice. If a word sounds odd or is mispronounced, that is your system voice, not this app.</p>
+      <p class="about-label" data-i18n="about.creditTitle">Attribution &amp; disclaimer</p>
+      <p class="hint" data-i18n="about.credit">LexForge ships with no dictionary of its own. Whatever word data ends up in it — fetched with the bundled fetch tool from the public web pages of <b>Oxford Learner's Dictionaries</b> (© Oxford University Press) and <b>Collins COBUILD</b> (© HarperCollins Publishers), or added by any other means — belongs to its copyright owners. Content is fetched for <b>personal study only</b>; anything here can be removed on request from the rights holders.</p>
+      <p class="hint" data-i18n="about.disclaimer">LexForge runs entirely offline and collects nothing. Use at your own risk: the author is not liable for any loss caused by using LexForge or the bundled fetch tool, and any infringement arising from how you fetch, store, or share the content is the user's own responsibility.</p>
+      <!-- 以后把 GitHub 仓库地址和个人联系方式加在这行下面 -->
+      <p class="hint" data-i18n="about.links">Source &amp; feedback: <a href="https://github.com/Cocoo23/LexForge" target="_blank" rel="noopener">github.com/Cocoo23/LexForge</a> · Contact: <a href="mailto:Cocoo23stu@proton.me">Cocoo23stu@proton.me</a></p>
+      <p class="hint" data-i18n="about.version">Version 1.0 · built 2026-10-23</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ Word editor ============ -->
+<div class="modal" id="wordModal" hidden="">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modalTitle" data-i18n="modal.addTitle">Add word</h3>
+      <button class="btn ghost sm m-details-btn" id="mDetailsBtn" data-i18n="btn.details">Details</button>
+      <button class="icon-btn" data-close="">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="m-msg" id="mLibHint" data-i18n="modal.libHint" hidden></p>
+      <div class="field-row">
+        <div class="field">
+          <span data-i18n="f.word">Word *</span>
+          <div class="audio-row">
+            <input id="mWord" class="input" placeholder="book" autocomplete="off">
+            <button class="btn pull" id="mLookup" title="Fill the senses, combinations and examples from the dictionary">
+              <span data-i18n="btn.lookup">Pull from dictionary</span>
+            </button>
+          </div>
+        </div>
+        <label class="field narrow">
+          <span data-i18n="f.pos">POS</span>
+          <input id="mPos" class="input" placeholder="noun / verb" autocomplete="off" readonly>
+        </label>
+        <label class="field narrow" id="mBankWrap">
+          <span data-i18n="f.bank">Word bank</span>
+          <select id="mBank" class="input"></select>
+        </label>
+      </div>
+      <p class="m-msg" id="mLookupMsg" role="status" aria-live="polite"></p>
+      <p class="hint" data-i18n="f.posAuto">POS is picked up automatically from the POS box of each sense below.</p>
+      <p class="m-gloss" id="mGloss"></p>
+      <div id="mDetails" class="m-details">
+      <div class="field">
+        <span class="field-label" data-i18n="f.phonetic">Pronunciation</span>
+        <div class="audio-row phonetic-row">
+          <input id="mPhonetic" class="input" placeholder="/bʊk/">
+          <button class="btn spk" id="mPlay" title="Play pronunciation (your system voice)" aria-label="Play pronunciation">▶</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="f-head">
+          <span class="field-label" data-i18n="f.senses">Senses</span>
+          <button class="btn sm" id="mAddSense" data-i18n="btn.addSense">Add sense</button>
+        </div>
+        <div id="mSenseList" class="sense-editor"></div>
+      </div>
+      <div class="field">
+        <div class="f-head">
+          <span class="field-label" data-i18n="f.combos">Word combinations</span>
+          <button class="btn sm" id="mAddCombo" data-i18n="btn.addCombo">Add combination</button>
+        </div>
+        <div id="mComboList" class="combo-editor"></div>
+        <p class="hint" data-i18n="f.combosHint">Phrases, phrasal verbs, idioms and collocations — each with its own meaning and example sentences.</p>
+      </div>
+      </div>
+      <div class="field" id="mMasteryWrap">
+        <span class="field-label" data-i18n="f.mastery">Mastery</span>
+        <div class="seg" id="mMastery"></div>
+      </div>
+      <div class="field" id="mWeakWrap">
+        <span class="field-label" data-i18n="f.weak">Weaknesses</span>
+        <div class="chip-grid" id="mWeak"></div>
+      </div>
+      <div class="field" id="mUnsureWrap" hidden="">
+        <span class="field-label" data-i18n="f.unsure">Tick the senses you are not sure about</span>
+        <div class="chip-grid" id="mUnsure"></div>
+        <p class="hint" data-i18n="f.unsureHint">Only these senses will be targeted when the passage is written. Hover a sense to see its full definition.</p>
+      </div>
+      <div class="field">
+        <span class="field-label" data-i18n="f.note">Note</span>
+        <input id="mNote" class="input" placeholder="e.g. met in a reading passage meaning 'reserve'">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger ghost" id="mDelete" hidden="" data-i18n="btn.delete">Delete</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" data-close="" data-i18n="btn.cancel">Cancel</button>
+      <button class="btn primary" id="mSave" data-i18n="btn.save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Import ============ -->
+<div class="modal" id="importModal" hidden="">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 data-i18n="imp.title">Import words</h3>
+      <button class="icon-btn" data-close="">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="imp-top">
+        <div class="seg small" id="impMode">
+          <button class="seg-btn active" data-mode="pack" data-i18n="imp.pack">Paste a word pack</button>
+          <button class="seg-btn" data-mode="paste" data-i18n="imp.paste">Paste a list</button>
+          <button class="seg-btn" data-mode="dict" data-i18n="imp.dict">Dictionary data</button>
+        </div>
+        <button class="btn" id="impSingle" data-i18n="btn.addOne">Add one word</button>
+        <span class="imp-spacer"></span>
+        <label class="field imp-dup">
+          <span data-i18n="imp.dupMode">On a word you already have:</span>
+          <select id="impPackDup" class="input">
+            <option value="skip" data-i18n="imp.skip">Skip</option>
+            <option value="overwrite" data-i18n="imp.overwrite">Overwrite</option>
+          </select>
+        </label>
+      </div>
+      <div class="imp-top">
+        <button class="btn" id="impPackLoad" data-i18n="imp.loadFile">Load wordpack.json</button>
+        <input type="file" id="impPackFile" accept=".json,application/json" hidden="">
+        <span class="imp-spacer"></span>
+        <a class="btn" id="openFetch" href="lexforge-fetch:open" data-i18n="imp.openFetch">Open fetch tool</a>
+      </div>
+
+      <div id="impPack" hidden="">
+        <details class="fetch-help">
+          <summary data-i18n="imp.helpTitle">Fetch tool: usage &amp; how to undo (click to expand)</summary>
+          <p class="hint" data-i18n="imp.packHint">…</p>
+          <p class="hint" data-i18n="imp.openFetchHint">…</p>
+          <p class="hint" data-i18n="imp.fetchUndo">…</p>
+        </details>
+        <textarea id="impPackText" class="input code" rows="10" data-i18n="imp.packPh" placeholder="{ &quot;app&quot;: &quot;LexForge&quot;, &quot;kind&quot;: &quot;wordpack&quot;, … }"></textarea>
+      </div>
+
+      <div id="impPaste" hidden="">
+        <p class="hint" data-i18n="imp.pasteHint">One word per line. A bare word is filled in from your word library when we have it; <code>word | sense; sense</code> and <code>word, pos, sense</code> also work.</p>
+        <textarea id="impText" class="input code" rows="10" placeholder="address
+book
+charge, verb, to ask someone to pay
+take in | to understand; to deceive"></textarea>
+      </div>
+
+      <div id="impDict" hidden="">
+        <p class="hint" data-i18n="imp.dictHint">…</p>
+        <div class="imp-top">
+          <button class="btn" id="impDictExport" data-i18n="imp.dictExport">Export dictionary</button>
+          <button class="btn" id="impDictLoad" data-i18n="imp.dictImport">Import dictionary file</button>
+          <input type="file" id="impDictFile" accept=".json,application/json" hidden="">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn ghost" data-close="" data-i18n="btn.cancel">Cancel</button>
+      <button class="btn primary" id="impGo" data-i18n="btn.import">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Word library ============ -->
+<div class="modal" id="libModal" hidden="">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h3 data-i18n="lib.title">Word library</h3>
+      <button class="icon-btn" data-close="">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint" id="libStat"></p>
+      <div class="lib-tools">
+        <input type="search" id="libSearch" class="input search" data-i18n="lib.searchPh" placeholder="Search words…">
+        <button class="btn ghost sm" id="libSelectAll" data-i18n="lib.selectAll">Select all shown</button>
+        <button class="btn ghost sm" id="libInvert" data-i18n="lib.invertSel">Invert selection</button>
+        <button class="btn ghost sm" id="libClearAll" data-i18n="lib.clearSel">Clear selection</button>
+        <button class="btn ghost sm" id="libDelSel" data-i18n="lib.delSel" disabled="">Delete selected</button>
+      </div>
+      <div class="lib-grid tall" id="libGrid"></div>
+      <p class="hint" id="libHint" data-i18n="lib.hint">Words already in the selected word bank are marked ✓. Ticking them does nothing.</p>
+    </div>
+    <div class="modal-foot">
+      <span class="muted" id="libSelCount"></span>
+      <select id="libBank" class="input"></select>
+      <div class="spacer"></div>
+      <button class="btn ghost" data-close="" data-i18n="btn.cancel">Cancel</button>
+      <button class="btn ghost" id="btnImport" data-i18n="btn.import">Import</button>
+      <button class="btn primary" id="libAdd" data-i18n="lib.addToBank">Add to word bank</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Batch edit word bank ============ -->
+<div class="modal" id="bankEditModal" hidden="">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h3 data-i18n="bankedit.title">Batch edit word bank</h3>
+      <button class="icon-btn" data-close="">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint" data-i18n="bankedit.hint">Greyed-out words stay. Click a word to un-grey it (= mark for removal), then press Save. ✎ edits the word in place.</p>
+      <div class="lib-tools">
+        <input type="search" id="bankEditSearch" class="input search" data-i18n="bankedit.searchPh" placeholder="Search words…">
+      </div>
+      <div class="lib-grid tall" id="bankEditGrid"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="muted" id="bankEditCount"></span>
+      <select id="bankEditBank" class="input" title="Which word bank you are editing"></select>
+      <div class="spacer"></div>
+      <button class="btn ghost" data-close="" data-i18n="btn.cancel">Cancel</button>
+      <button class="btn danger" id="bankEditSave" data-i18n="bankedit.save">Save — remove marked</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Manual add to this round ============ -->
+<div class="modal" id="pickModal" hidden="">
+  <div class="modal-box small">
+    <div class="modal-head">
+      <h3 data-i18n="pick.title">Select words to include</h3>
+      <button class="icon-btn" data-close="">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="lib-tools">
+        <input type="search" id="pickSearch" class="input search" placeholder="Search your word bank…">
+        <button class="btn ghost sm" id="pickAll" data-i18n="lib.selectAll">Select all shown</button>
+        <button class="btn ghost sm" id="pickInvert" data-i18n="lib.invertSel">Invert selection</button>
+        <button class="btn ghost sm" id="pickClear" data-i18n="lib.clearSel">Clear selection</button>
+      </div>
+      <div class="lib-grid" id="pickGrid"></div>
+    </div>
+    <div class="modal-foot">
+      <select id="pickBank" class="input" title="Which word bank you are picking from"></select>
+      <button class="btn ghost" id="pickFromLib" data-i18n="pick.fromLib">Add from the library…</button>
+      <div class="spacer"></div>
+      <button class="btn primary" data-close="" data-i18n="btn.done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Settings ============ -->
+<div class="modal" id="settingsModal" hidden="">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 data-i18n="set.title">Settings</h3>
+      <button class="icon-btn" data-close="">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="field">
+        <span class="field-label" data-i18n="set.language">Interface language</span>
+        <div class="seg small" id="setLang">
+          <button class="seg-btn active" data-lang="en">English</button>
+          <button class="seg-btn" data-lang="zh">中文</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label" data-i18n="set.theme">Theme</span>
+        <div class="seg small" id="setTheme">
+          <button class="seg-btn active" data-theme="light" data-i18n="set.theme.light">Light</button>
+          <button class="seg-btn" data-theme="dark" data-i18n="set.theme.dark">Dark</button>
+          <button class="seg-btn" data-theme="system" data-i18n="set.theme.system">Follow system</button>
+        </div>
+      </div>
+
+      <hr class="sep">
+
+      <div class="field">
+        <span class="field-label" data-i18n="set.defaults">Defaults for a new passage</span>
+        <p class="hint" data-i18n="set.defHint">Used every time you open Build a passage. Typing a number here stops that one from following the passage length — press Restore defaults to bring Auto back.</p>
+      </div>
+
+      <div class="field-row">
+        <label class="field narrow">
+          <span data-i18n="forge.length">Length (words)</span>
+          <input type="number" id="setLength" class="input" min="80" max="2000" step="10" value="360">
+        </label>
+        <label class="field narrow">
+          <span data-i18n="forge.coverage">Minimum coverage</span>
+          <select id="setCoverage" class="input">
+            <option value="60">60%</option>
+            <option value="75">75%</option>
+            <option value="90">90%</option>
+            <option value="100">100%</option>
+          </select>
+        </label>
+        <div class="field narrow">
+          <span data-i18n="forge.count">Target words</span>
+          <input type="number" id="setCount" class="input" min="3" max="30" step="1" value="9">
+          <label class="check inline"><input type="checkbox" id="setCountAuto" checked=""> <span data-i18n="forge.auto">Adjust with length</span></label>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span data-i18n="forge.genre">Genre</span>
+          <select id="setGenre" class="input"><option value="Expository — explaining a phenomenon or concept">Expository</option><option value="Argumentative — a claim with reasons and a counter-argument">Argumentative</option><option value="News report — an event with several voices">News report</option><option value="Science explainer — how something works">Science explainer</option><option value="Research summary — a study and what it means">Research summary</option><option value="Opinion column / op-ed">Opinion column / op-ed</option><option value="Book or film review">Book or film review</option><option value="Biography / personal profile">Biography / profile</option><option value="Narrative — a story with a turn">Narrative</option><option value="Historical account">Historical account</option><option value="Culture and travel essay">Culture &amp; travel</option><option value="Business / market report">Business / market</option><option value="Product or service description">Product description</option><option value="How-to / practical guide">How-to guide</option><option value="Interview (Q&amp;A form)">Interview (Q&amp;A)</option><option value="Letter or email to an editor">Letter to an editor</option><option value="Speech / talk transcript">Speech / talk</option><option value="Fable or allegory">Fable / allegory</option><option value="Comparison — two things weighed against each other">Comparison</option></select>
+        </label>
+        <label class="field">
+          <span data-i18n="forge.topic">Topic</span>
+          <select id="setTopic" class="input"><option value="Any topic that best fits the target words">Any (writer's choice)</option><option value="Technology and artificial intelligence">Technology &amp; AI</option><option value="Environment and sustainability">Environment &amp; sustainability</option><option value="Psychology and behavioural science">Psychology &amp; behaviour</option><option value="Education and learning science">Education &amp; learning</option><option value="Culture and cross-cultural exchange">Culture &amp; exchange</option><option value="Health, medicine and lifestyle">Health &amp; lifestyle</option><option value="Society, cities and demography">Society &amp; cities</option><option value="History, archaeology and the humanities">History &amp; humanities</option><option value="Business, economy and consumption">Business &amp; economy</option><option value="Art, literature and media">Art, literature &amp; media</option><option value="Sports and competition">Sports</option><option value="Food, agriculture and diet">Food &amp; agriculture</option><option value="Law, ethics and public policy">Law, ethics &amp; policy</option><option value="Space, physics and natural science">Space &amp; natural science</option><option value="Work, careers and organisations">Work &amp; careers</option><option value="__custom">Custom… (type below)</option></select>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <div class="field narrow">
+          <span data-i18n="forge.paras">Paragraphs</span>
+          <input type="number" id="setParas" class="input" min="2" max="10" step="1" value="4">
+          <label class="check inline"><input type="checkbox" id="setParasAuto" checked=""> <span data-i18n="forge.auto">Adjust with length</span></label>
+        </div>
+        <div class="field narrow">
+          <span data-i18n="forge.questions">Questions</span>
+          <input type="number" id="setQuestions" class="input" min="0" max="12" step="1" value="4">
+          <label class="check inline"><input type="checkbox" id="setQuestionsAuto" checked=""> <span data-i18n="forge.auto">Adjust with length</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+          <span data-i18n="forge.level">Target level</span>
+        <select id="setLevel" class="input"><option value="Gaokao (China national college entrance exam) — C/D reading passages">Gaokao (China) — C/D passages</option><option value="Zhongkao (China junior-high entrance exam)">Zhongkao (China junior-high)</option><option value="CET-4 (China college English band 4)">CET-4 (China)</option><option value="CET-6 (China college English band 6)">CET-6 (China)</option><option value="Kaoyan (China postgraduate English, reading section)">Kaoyan (China postgraduate)</option><option value="IELTS Academic reading (band 6.0–7.0)">IELTS Academic</option><option value="TOEFL iBT reading">TOEFL iBT</option><option value="CEFR A2 — elementary">CEFR A2 — elementary</option><option value="CEFR B1 — intermediate">CEFR B1 — intermediate</option><option value="CEFR B2 — upper intermediate">CEFR B2 — upper intermediate</option><option value="CEFR C1 — advanced">CEFR C1 — advanced</option><option value="CEFR C2 — proficient">CEFR C2 — proficient</option><option value="">General educated reading, no exam constraint</option><option value="__custom">Custom</option></select>
+      </div>
+
+      <label class="field" id="setLevelCustomWrap" hidden="">
+        <span data-i18n="forge.levelCustom">Custom level</span>
+        <input id="setLevelCustom" class="input" placeholder="e.g. first-year university, about 3500 word families">
+      </label>
+
+      <div class="field">
+        <span class="field-label" data-i18n="set.outputs">Extra output sections, on by default</span>
+        <div class="chip-grid" id="setOutputs"></div>
+        <p class="hint" data-i18n="set.outputsHint">Ticked here = already ticked every time you open Build a passage. You can still switch them per passage.</p>
+      </div>
+
+      <label class="field">
+        <span class="field-label" data-i18n="set.extra">Default extra instructions</span>
+        <textarea id="setExtra" class="input" rows="2" placeholder="e.g. avoid long parenthetical clauses; end with an open question; keep sentences under 25 words…"></textarea>
+        <p class="hint" data-i18n="set.extraHint">Pre-filled in the extra instructions box every time you open Build a passage. You can still change or clear it per passage.</p>
+      </label>
+
+      <hr class="sep">
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="setReset" data-i18n="set.reset">Restore defaults</button>
+      <div class="spacer"></div>
+      <button class="btn ghost" data-close="" data-i18n="set.close">Close</button>
+      <button class="btn primary" id="setSave" data-i18n="btn.save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden=""></div>
+
+<script src="assets/word.js"></script>
+
+<script src="assets/dictstore.js"></script>
+<script src="assets/store.js"></script>
+<script src="assets/scheduler.js"></script>
+<script src="assets/promptgen.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/app.js"></script>
+
+
+
+</body></html>
